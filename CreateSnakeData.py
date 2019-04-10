@@ -1,41 +1,11 @@
 import pygame
 import  sys, random, copy
 import pandas as pd
-
-# Game constants
-width = 800
-height = 600
-BG = 60,60,60
-FOOD_C = 200,0,0
-BODY_C =255,255,255
-sqr_size = 20
-SPEED = sqr_size
-
-
-# constant variables
-save_file = "Snake_data.csv"
-inputs = ["left","front","right","food_angle","sug_direction"]
-output =["move_rating"] #-1-> snake didnt survive;0->survived but the direction is wrong;1-> survived and the direction is right
-columns = inputs + output
-
-
-# Cycle to play n games
-## Cycle parameters
-n = 5
-show_game = True
-max_score = 30
-max_time = 2 #min
-# cycle for each gamer snake
-for gamer in range(0,n):
-    # Initialize game
-    game_data = game_data.append(Play_Game())
-
-
-
+import math
 
 ##### Functions #####
 
-def Play_Game(show_game,max_score,max_time):
+def Play_Game(show_game,max_score,max_time,columns):
 
     # Game Constants
     lost = False
@@ -64,12 +34,17 @@ def Play_Game(show_game,max_score,max_time):
     food = Food()
 
     # begin game cycle
-
+    
     while not lost:
+        # save the previous distance
+        previous_distance = dist(snake,food)
 
         if pygame.time.get_ticks()-timer > delay(snake) and show_game == True:
             timer = pygame.time.get_ticks()
-        change,sug_change = next_move(snake,food)
+        change = next_move(snake,food)
+
+        # Convert change to sug_change
+        sug_change = change[0]*-1 + change[2]*1
         
         # Create input list
         new_data_list = obstacles(snake,width,height)
@@ -87,8 +62,10 @@ def Play_Game(show_game,max_score,max_time):
         lost = loser(snake,food)
 
         # create output value for the dataframe
-        new_data_list.append(output(snake,food,eat,lost))
-
+        new_data_list.append(get_output(snake,food,eat,lost,previous_distance))
+        data.loc[len(data)] = new_data_list
+        #print(new_data_list)
+        
         if show_game == True:
             #Screen drawings
             screen.fill(BG)
@@ -98,7 +75,7 @@ def Play_Game(show_game,max_score,max_time):
                 pygame.display.set_caption("Snake. Your score is: {}".format(snake.score()))
                 pygame.display.update()
                 clock.tick(60)
-
+    #print(data.head(10))
     return data
 
 
@@ -186,10 +163,114 @@ def next_move (snake,food):
 
 
 def obstacles(snake,width,height):
-    return [left,front,right]
+    # left walls
+    if (snake.pos[0]==sqr_size):
+        if snake.mov[0][1]>0:
+            return [1,0,0]
+        if snake.mov[0][1]<0:
+            return [0,0,1]
+        if snake.mov[0][1]<0:
+            return [0,1,0]
+        return [0,0,0]
+    
+    # right walls
+    if (snake.pos[0]==width-sqr_size):
+        if snake.mov[0][1]>0:
+            return [0,0,1]
+        if snake.mov[0][1]<0:
+            return [1,0,0]
+        if snake.mov[0][0]>0:
+            return [0,1,0]
+        return [0,0,0]
+    
+    # down walls
+    if (snake.pos[1]==sqr_size):
+        if snake.mov[0][1]<0:
+            return [0,1,0]
+        if snake.mov[0][0]<0:
+            return [1,0,0]
+        if snake.mov[0][0]>0:
+            return [0,0,1]
+        return [0,0,0]
+
+    # upper wals
+    if (snake.pos[1]==height-sqr_size):
+        if snake.mov[0][1]>0:
+            return [0,1,0]
+        if snake.mov[0][0]>0:
+            return [1,0,0]
+        if snake.mov[0][0]<0:
+            return [0,0,1]
+        return [0,0,0]
+    return [0,0,0]
+
 
 def snake_food_angle(snake,food):
+    # Vector from snake to food
+    SF = [food.pos[0]-snake.pos[0],food.pos[1]-snake.pos[1]]
+    #print(snake.mov)
+    angle = math.acos( (SF[0] * snake.mov[0][0] + SF[1] * snake.mov[0][1] )/dist(snake,food) )
+    if SF[1]<0:
+        angle = -angle 
+    angle = angle/math.pi
     return angle
 
-def output(snake,food,eat,lost):
-    return output_value
+def get_output(snake,food,eat,lost,previous_distance):
+    if eat == 1:
+        return 1
+    if lost == 1:
+        return -1
+    if previous_distance>dist(snake,food):
+        return 0
+    else:
+        return 1
+    
+    return 0
+
+
+
+####################### MAIN #######################
+
+# Game constants
+width = 800
+height = 600
+BG = 60,60,60
+FOOD_C = 200,0,0
+BODY_C =255,255,255
+sqr_size = 20
+SPEED = sqr_size
+
+
+# constant variables
+
+inputs = ["left","front","right","food_angle","sug_direction"]
+output =["move_rating"] #-1-> snake didnt survive;0->survived but the direction is wrong;1-> survived and the direction is right
+columns = inputs + output
+game_data = pd.read_csv("game_data.csv")
+#game_data = pd.DataFrame(columns=columns)
+
+
+
+
+# Cycle to play n games
+## Cycle parameters
+n = 200
+show_game = True
+max_score = 30
+max_time = 2 #min
+# cycle for each gamer snake
+for gamer in range(0,n):
+    # Initialize game
+    print("Gamer "+str(gamer))
+    new_data = Play_Game(True,5,2,columns)
+    
+    game_data = game_data.append(new_data)
+    print("Gamer "+str(gamer)+" has lost =(")
+    print(game_data.head(10))
+    game_data.to_csv (r'game_data.csv', index = None, header=True) 
+
+    print("Saved it!")
+
+
+
+
