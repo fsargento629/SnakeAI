@@ -41,7 +41,7 @@ def Play_Game(show_game,max_score,max_time,columns):
 
         if pygame.time.get_ticks()-timer > delay(snake) and show_game == True:
             timer = pygame.time.get_ticks()
-        change = next_move(snake,food)
+        change = next_move_random(snake,food)
 
         # Convert change to sug_change
         sug_change = change[0]*-1 + change[2]*1
@@ -145,7 +145,7 @@ def delay(snake): # I dont know man
     else:
         return 35
 
-def next_move (snake,food): 
+def next_move_random (snake,food): 
     # just randomize the next move 
     #next move should either be to 
     # turn right, left or keep straight
@@ -254,7 +254,7 @@ game_data = pd.read_csv("game_data.csv")
 
 # Cycle to play n games
 ## Cycle parameters
-n = 200
+n = 2
 show_game = True
 max_score = 30
 max_time = 2 #min
